@@ -42,14 +42,19 @@ namespace WorkerServiceFraudDetection
             Parallel.ForEach(transactions, async transaction =>
             {
                 var status = await IsSuspiciousTransaction(transaction);
+                Console.WriteLine(status);
                 if (status)
                 {
                     //Sakıncalı kayıdı logla ister dbye ya da başka bir mesaj kuyruğuna ekle
                     _logger.LogInformation("Potential fraud detected: " + transaction.TransactionDate);
+                    /* sql veritabanına aşağıdaki kod çalıştırılabilir */
+                    /*
                     await _sqlConnection.OpenAsync();
+
                       await  _sqlConnection.ExecuteAsync("INSERT INTO FRAUD_TRANSACTIONS (TransactionDate, Amount, Id) VALUES (@0, @1, @2)", new { transaction?.TransactionDate, transaction.Amount, transaction.Id });
-                    await _sqlConnection.CloseAsync(); 
                     
+                    await _sqlConnection.CloseAsync(); 
+                    */
                 }
             });
 

@@ -6,8 +6,8 @@ IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
         services.AddHostedService<FraudDetection>();
-        services.AddSingleton<IQueueService, QueueService>();
-        services.AddScoped<IFraudService, FraudService>();
+        services.AddSingleton<IFraudService, FraudService>();
+        services.AddSingleton<IQueueService, QueueService>();        
         services.AddSingleton<INetworkService, NetworkService>();
         services.AddSingleton<ICardService, CardService>();
     })
