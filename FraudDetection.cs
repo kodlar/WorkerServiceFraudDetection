@@ -14,8 +14,7 @@ namespace WorkerServiceFraudDetection
         public FraudDetection(ILogger<FraudDetection> logger,  IQueueService transactionsQueue, IFraudService fraudService)
         {
             _logger = logger;            
-            _sqlConnection = new SqlConnection($"Data Source=YOUR_DATABASE_SERVER;Initial Catalog=YOUR_DATABASE;Integrated Security=True;Application Name=YOUR_APP_NAME");
-            _sqlConnection.Open();
+            _sqlConnection = new SqlConnection($"Data Source=YOUR_DATABASE_SERVER;Initial Catalog=YOUR_DATABASE;Integrated Security=True;Application Name=YOUR_APP_NAME");            
             _fraudService = fraudService;
             _transactionsQueue = transactionsQueue;
         }
@@ -30,28 +29,45 @@ namespace WorkerServiceFraudDetection
                 List<Transaction> transactions = _transactionsQueue.GetNextBatch();
 
                 //Arka planda transactionları işle
-                Task.Run(() => ProcessTransactions(transactions));
+                Task.Run(() => ProcessTransactions(transactions, _sqlConnection));
 
                 // bir sonraki döngüye geçmeden 2 saniye bekle
                 await Task.Delay(TimeSpan.FromSeconds(2));
             }
         }
 
-        private async Task ProcessTransactions(List<Transaction> transactions)
+        private async Task ProcessTransactions(List<Transaction> transactions, SqlConnection _sqlConnection)
         {
 
+            Parallel.ForEach(transactions, async transaction =>
+            {
+                var status = await IsSuspiciousTransaction(transaction);
+                if (status)
+                {
+                    //Sakıncalı kayıdı logla ister dbye ya da başka bir mesaj kuyruğuna ekle
+                    _logger.LogInformation("Potential fraud detected: " + transaction.TransactionDate);
+                    await _sqlConnection.OpenAsync();
+                      await  _sqlConnection.ExecuteAsync("INSERT INTO FRAUD_TRANSACTIONS (TransactionDate, Amount, Id) VALUES (@0, @1, @2)", new { transaction?.TransactionDate, transaction.Amount, transaction.Id });
+                    await _sqlConnection.CloseAsync(); 
+                    
+                }
+            });
+
+            /*
             foreach (Transaction transaction in transactions)
             {
+                
                 // Fraud durumu kontrol et
                 if (await IsSuspiciousTransaction(transaction))
                 {
-                    // Add the transaction to the database for further review
+                   //Sakıncalı kayıdı logla ister dbye yaz ister queya at.
                     _logger.LogInformation("Potential fraud detected: " + transaction.TransactionDate);
                     _sqlConnection.ExecuteAsync("INSERT INTO FRAUD_TRANSACTIONS (TransactionDate, Amount, Id) VALUES (@0, @1, @2)", new { transaction?.TransactionDate, transaction.Amount, transaction.Id });
                     
                     //Başka bir kuyruğa alınabilir...
                 }
             }
+            */
         }
 
         private async Task<bool> IsSuspiciousTransaction(Transaction transaction)
